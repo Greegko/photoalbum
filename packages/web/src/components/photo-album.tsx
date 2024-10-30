@@ -4,7 +4,7 @@ import { useImageDirectoryHandler } from "../model/image-directory-handler";
 
 export const PhotoAlbum = () => {
   const { directoryHandler, requestDirectoryAccess } = useImageDirectoryHandler();
-  const { images, setDirectoryHandle, addTagToImage } = usePhotoAlbum();
+  const { images, setDirectoryHandle, addTagToImage, removeTagFromImage } = usePhotoAlbum();
   const [selectedImage, setSelectedImage] = createSignal<ImageData | null>(null);
 
   createComputed(() => {
@@ -25,11 +25,9 @@ export const PhotoAlbum = () => {
     return imgs;
   });
 
-  const onSelectFolder = () => requestDirectoryAccess();
-
   return (
     <div class="flex flex-col items-center">
-      <div onClick={onSelectFolder} class="mb-4">
+      <div onClick={requestDirectoryAccess} class="mb-4">
         Select Folder
       </div>
 
@@ -40,7 +38,9 @@ export const PhotoAlbum = () => {
             <Show when={selectedImage.metadata.tags.length}>
               <div class="flex flex-wrap gap-1 mt-2">
                 {selectedImage.metadata.tags.map(tag => (
-                  <Tag text={tag} color="bg-blue-500" />
+                  <span onClick={() => removeTagFromImage(selectedImage, tag)}>
+                    <Tag text={tag} color="bg-blue-500" />
+                  </span>
                 ))}
               </div>
             </Show>

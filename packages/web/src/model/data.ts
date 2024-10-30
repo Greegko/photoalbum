@@ -78,6 +78,31 @@ export const usePhotoAlbum = () => {
     }
   };
 
+  const removeTagFromImage = async (image: ImageData, tag: string) => {
+    const currentImages = images();
+    const imageIndex = currentImages.findIndex(i => i === image);
+    if (imageIndex !== -1) {
+      const updatedTags = currentImages[imageIndex].metadata.tags.filter(t => t !== tag);
+      const updatedImage = {
+        ...currentImages[imageIndex],
+        metadata: { ...currentImages[imageIndex].metadata, tags: updatedTags },
+      };
+      const updatedImages = [
+        ...currentImages.slice(0, imageIndex),
+        updatedImage,
+        ...currentImages.slice(imageIndex + 1),
+      ];
+      setImages(updatedImages);
+      const metadata: Metadata = updatedImages.reduce((acc, image) => {
+        acc[image.name] = { tags: image.metadata.tags };
+        return acc;
+      }, {} as Metadata);
+      if (directoryHandle()) {
+        await saveMetadata(directoryHandle()!, metadata);
+      }
+    }
+  };
+
   createComputed(async () => {
     if (!directoryHandle()) return;
 
@@ -86,5 +111,5 @@ export const usePhotoAlbum = () => {
     setImages(imageFiles);
   });
 
-  return { images, setDirectoryHandle, addTagToImage };
+  return { images, setDirectoryHandle, addTagToImage, removeTagFromImage };
 };
