@@ -1,42 +1,38 @@
-import { createComputed, createSignal, onMount } from "solid-js";
+import { createComputed, createSignal } from "solid-js";
 
-interface ImageData {
+export interface ImageData {
   name: string;
   path: string;
 }
 
-interface Metadata {
-  [key: string]: any;
-}
-
 export const usePhotoAlbum = () => {
   const [images, setImages] = createSignal<ImageData[]>([]);
-  const [metadata, setMetadata] = createSignal<Metadata | null>(null);
   const [directoryHandle, setDirectoryHandle] = createSignal<FileSystemDirectoryHandle | null>(null);
 
-  createComputed(async () => {
-    if (!directoryHandle()) return;
-
-    const imageFiles: ImageData[] = [];
-    let metadataFile: Metadata | null = null;
-
-    for await (const entry of directoryHandle()!.values()) {
+  const loadImagesFromDirectory = async (handle: FileSystemDirectoryHandle): Promise<ImageData[]> => {
+    let imageFiles: ImageData[] = [];
+    for await (const entry of handle.values()) {
       if (entry.kind === "file") {
         const file = await entry.getFile();
         const ext = file.name.split(".").pop()?.toLowerCase();
 
-        if (ext === "json") {
-          const text = await file.text();
-          metadataFile = JSON.parse(text);
-          setMetadata(metadataFile);
-        } else if (["jpg", "jpeg", "png", "gif"].includes(ext || "")) {
-          imageFiles.push({ name: file.name, path: URL.createObjectURL(file) });
+        if (["jpg", "jpeg", "png", "gif"].includes(ext || "")) {
+          imageFiles = [...imageFiles, { name: file.name, path: URL.createObjectURL(file) }];
         }
+      } else if (entry.kind === "directory") {
+        const nestedImages = await loadImagesFromDirectory(entry);
+        imageFiles = [...imageFiles, ...nestedImages];
       }
     }
+    return imageFiles;
+  };
 
+  createComputed(async () => {
+    if (!directoryHandle()) return;
+
+    const imageFiles = await loadImagesFromDirectory(directoryHandle()!);
     setImages(imageFiles);
   });
 
-  return { images, metadata, setDirectoryHandle };
+  return { images, setDirectoryHandle };
 };
