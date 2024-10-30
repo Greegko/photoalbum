@@ -26,9 +26,9 @@ export const PhotoAlbum = () => {
   });
 
   return (
-    <div class="flex flex-col items-center">
+    <div class="w-[800px] m-auto">
       <div onClick={requestDirectoryAccess} class="mb-4">
-        Select Folder
+        Select Root Folder
       </div>
 
       <Show when={selectedImage()} keyed>
@@ -56,7 +56,7 @@ export const PhotoAlbum = () => {
         )}
       </Show>
 
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="grid grid-cols-2 md:grid-cols-7 gap-4">
         <For each={images()}>
           {image => (
             <div
