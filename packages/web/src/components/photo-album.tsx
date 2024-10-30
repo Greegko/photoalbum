@@ -1,19 +1,19 @@
 import { createComputed, createSignal, For, Show, untrack } from "solid-js";
-import { ImageData, usePhotoAlbum } from "../model/data";
+import { Image, usePhotoAlbum } from "../model/photo-album";
 import { useImageDirectoryHandler } from "../model/image-directory-handler";
 
 export const PhotoAlbum = () => {
   const { directoryHandler, requestDirectoryAccess } = useImageDirectoryHandler();
-  const { images, setDirectoryHandle, addTagToImage, removeTagFromImage } = usePhotoAlbum();
-  const [selectedImage, setSelectedImage] = createSignal<ImageData | null>(null);
+  const { images, setRootDirectoryHandle, addTagToImage, removeTagFromImage } = usePhotoAlbum();
+  const [selectedImage, setSelectedImage] = createSignal<Image | null>(null);
 
   createComputed(() => {
     if (directoryHandler() !== null) {
-      setDirectoryHandle(directoryHandler());
+      setRootDirectoryHandle(directoryHandler());
     }
   });
 
-  createComputed((prevImages: ImageData[]) => {
+  createComputed((prevImages: Image[]) => {
     const imgs = images();
     const currentSelectedImage = untrack(() => selectedImage());
 
@@ -34,7 +34,7 @@ export const PhotoAlbum = () => {
       <Show when={selectedImage()} keyed>
         {selectedImage => (
           <div class="mb-4">
-            <img src={selectedImage.path} alt="Selected" class="max-w-full max-h-96" />
+            <img src={selectedImage.url} alt="Selected" class="max-w-full max-h-96" />
             <Show when={selectedImage.metadata.tags.length}>
               <div class="flex flex-wrap gap-1 mt-2">
                 {selectedImage.metadata.tags.map(tag => (
@@ -64,7 +64,7 @@ export const PhotoAlbum = () => {
               class="relative cursor-pointer"
               classList={{ "border-4 border-blue-500": selectedImage() === image }}
             >
-              <img src={image.path} alt={image.name} class="w-full h-24 object-cover" />
+              <img src={image.url} alt={image.name} class="w-full h-24 object-cover" />
               <Show when={image.metadata.tags.length > 0}>
                 <div class="absolute bottom-2 left-2 flex flex-wrap gap-1">
                   {image.metadata.tags.map(tag => (
