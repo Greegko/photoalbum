@@ -1,0 +1,13 @@
+{
+  "scripts": {
+    "start": "pnpm --project=web start",
+    "build": "pnpm --project=build build"
+  },
+  "dependencies": {
+    "concurrently": "8.0.1"
+  },
+  "devDependencies": {
+    "@trivago/prettier-plugin-sort-imports": "4.3.0",
+    "prettier": "3.2.5"
+  }
+}

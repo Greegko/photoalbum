@@ -1,0 +1,5 @@
+node_modules/
+public/
+data/*.json
+data/original-cv-test.png
+.DS_Store
