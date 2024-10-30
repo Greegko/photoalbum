@@ -3,14 +3,18 @@ import { createComputed, createSignal } from "solid-js";
 export interface ImageData {
   name: string;
   path: string;
-  tags: string[];
+  metadata: { tags: string[] };
+}
+
+export interface Metadata {
+  [key: string]: { tags: string[] };
 }
 
 export const usePhotoAlbum = () => {
   const [images, setImages] = createSignal<ImageData[]>([]);
   const [directoryHandle, setDirectoryHandle] = createSignal<FileSystemDirectoryHandle | null>(null);
 
-  const loadMetadata = async (handle: FileSystemDirectoryHandle): Promise<{ [key: string]: { tags: string[] } }> => {
+  const loadMetadata = async (handle: FileSystemDirectoryHandle): Promise<Metadata> => {
     for await (const entry of handle.values()) {
       if (entry.kind === "file" && entry.name === "metadata.json") {
         const file = await entry.getFile();
@@ -23,7 +27,7 @@ export const usePhotoAlbum = () => {
 
   const loadImagesFromDirectory = async (
     handle: FileSystemDirectoryHandle,
-    metadata: { [key: string]: { tags: string[] } },
+    metadata: Metadata,
   ): Promise<ImageData[]> => {
     let imageFiles: ImageData[] = [];
     for await (const entry of handle.values()) {
@@ -32,8 +36,8 @@ export const usePhotoAlbum = () => {
         const ext = file.name.split(".").pop()?.toLowerCase();
 
         if (["jpg", "jpeg", "png", "gif"].includes(ext || "")) {
-          const tags = metadata[file.name]?.tags || [];
-          imageFiles = [...imageFiles, { name: file.name, path: URL.createObjectURL(file), tags }];
+          const imageMetadata = metadata[file.name] || { tags: [] };
+          imageFiles = [...imageFiles, { name: file.name, path: URL.createObjectURL(file), metadata: imageMetadata }];
         }
       } else if (entry.kind === "directory") {
         const nestedImages = await loadImagesFromDirectory(entry, metadata);
@@ -41,6 +45,33 @@ export const usePhotoAlbum = () => {
       }
     }
     return imageFiles;
+  };
+
+  const saveMetadata = async (handle: FileSystemDirectoryHandle, metadata: Metadata) => {
+    for await (const entry of handle.values()) {
+      if (entry.kind === "file" && entry.name === "metadata.json") {
+        const writable = await entry.createWritable();
+        await writable.write(JSON.stringify(metadata));
+        await writable.close();
+        break;
+      }
+    }
+  };
+
+  const addTagToImage = async (imageName: string, tag: string) => {
+    const currentImages = images();
+    const imageIndex = currentImages.findIndex(image => image.name === imageName);
+    if (imageIndex !== -1) {
+      currentImages[imageIndex].metadata.tags.push(tag);
+      setImages([...currentImages]);
+      const metadata: Metadata = currentImages.reduce((acc, image) => {
+        acc[image.name] = { tags: image.metadata.tags };
+        return acc;
+      }, {} as Metadata);
+      if (directoryHandle()) {
+        await saveMetadata(directoryHandle()!, metadata);
+      }
+    }
   };
 
   createComputed(async () => {
@@ -51,5 +82,5 @@ export const usePhotoAlbum = () => {
     setImages(imageFiles);
   });
 
-  return { images, setDirectoryHandle };
+  return { images, setDirectoryHandle, addTagToImage };
 };

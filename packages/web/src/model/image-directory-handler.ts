@@ -1,5 +1,5 @@
 import { get, set } from "idb-keyval";
-import { createSignal, onMount } from "solid-js";
+import { createSignal } from "solid-js";
 
 export const useImageDirectoryHandler = () => {
   const [directoryHandler, setDirectoryHandler] = createSignal<FileSystemDirectoryHandle | null>(null);
