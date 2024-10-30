@@ -1,7 +1,7 @@
 {
   "scripts": {
-    "start": "pnpm --project=web start",
-    "build": "pnpm --project=build build"
+    "start": "pnpm -r start",
+    "build": "pnpm -r build"
   },
   "dependencies": {
     "concurrently": "8.0.1"

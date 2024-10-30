@@ -1,7 +1,7 @@
 import { render } from "solid-js/web";
 
 import "./main.css";
-
-const App = () => <div>Hello</div>;
+import "./shoelace";
+import { App } from "./app";
 
 render(() => <App />, document.getElementById("root"));
