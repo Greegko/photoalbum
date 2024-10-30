@@ -48,23 +48,27 @@ export const usePhotoAlbum = () => {
   };
 
   const saveMetadata = async (handle: FileSystemDirectoryHandle, metadata: Metadata) => {
-    for await (const entry of handle.values()) {
-      if (entry.kind === "file" && entry.name === "metadata.json") {
-        const writable = await entry.createWritable();
-        await writable.write(JSON.stringify(metadata));
-        await writable.close();
-        break;
-      }
-    }
+    const fileHandle = await handle.getFileHandle("metadata.json", { create: true });
+    const writable = await fileHandle.createWritable();
+    await writable.write(JSON.stringify(metadata));
+    await writable.close();
   };
 
-  const addTagToImage = async (imageName: string, tag: string) => {
+  const addTagToImage = async (image: ImageData, tag: string) => {
     const currentImages = images();
-    const imageIndex = currentImages.findIndex(image => image.name === imageName);
+    const imageIndex = currentImages.findIndex(i => i === image);
     if (imageIndex !== -1) {
-      currentImages[imageIndex].metadata.tags.push(tag);
-      setImages([...currentImages]);
-      const metadata: Metadata = currentImages.reduce((acc, image) => {
+      const updatedImage = {
+        ...currentImages[imageIndex],
+        metadata: { ...currentImages[imageIndex].metadata, tags: [...currentImages[imageIndex].metadata.tags, tag] },
+      };
+      const updatedImages = [
+        ...currentImages.slice(0, imageIndex),
+        updatedImage,
+        ...currentImages.slice(imageIndex + 1),
+      ];
+      setImages(updatedImages);
+      const metadata: Metadata = updatedImages.reduce((acc, image) => {
         acc[image.name] = { tags: image.metadata.tags };
         return acc;
       }, {} as Metadata);

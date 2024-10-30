@@ -1,4 +1,4 @@
-import { createComputed, createSignal, For, Show } from "solid-js";
+import { createComputed, createSignal, For, Show, untrack } from "solid-js";
 import { ImageData, usePhotoAlbum } from "../model/data";
 import { useImageDirectoryHandler } from "../model/image-directory-handler";
 
@@ -11,6 +11,18 @@ export const PhotoAlbum = () => {
     if (directoryHandler() !== null) {
       setDirectoryHandle(directoryHandler());
     }
+  });
+
+  createComputed((prevImages: ImageData[]) => {
+    const imgs = images();
+    const currentSelectedImage = untrack(() => selectedImage());
+
+    if (currentSelectedImage) {
+      const prevIndex = prevImages.indexOf(currentSelectedImage);
+      setSelectedImage(imgs[prevIndex]);
+    }
+
+    return imgs;
   });
 
   const onSelectFolder = () => requestDirectoryAccess();
@@ -33,10 +45,10 @@ export const PhotoAlbum = () => {
               </div>
             </Show>
             <div class="flex flex-wrap gap-1 mt-2">
-              <span onClick={() => addTagToImage(selectedImage.name, "A")}>
+              <span onClick={() => addTagToImage(selectedImage, "A")}>
                 <Tag text="A" color="bg-red-500" />
               </span>
-              <span onClick={() => addTagToImage(selectedImage.name, "B")}>
+              <span onClick={() => addTagToImage(selectedImage, "B")}>
                 <Tag text="B" color="bg-red-500" />
               </span>
             </div>
@@ -49,13 +61,14 @@ export const PhotoAlbum = () => {
           {image => (
             <div
               onClick={[setSelectedImage, image]}
-              class={`relative cursor-pointer ${selectedImage() === image ? "border-4 border-blue-500" : ""}`}
+              class="relative cursor-pointer"
+              classList={{ "border-4 border-blue-500": selectedImage() === image }}
             >
               <img src={image.path} alt={image.name} class="w-full h-24 object-cover" />
               <Show when={image.metadata.tags.length > 0}>
                 <div class="absolute bottom-2 left-2 flex flex-wrap gap-1">
                   {image.metadata.tags.map(tag => (
-                    <Tag text={tag} />
+                    <Tag text={tag} color="bg-blue-500" />
                   ))}
                 </div>
               </Show>
@@ -68,7 +81,7 @@ export const PhotoAlbum = () => {
 };
 
 const Tag = (props: { text: string; color: string }) => (
-  <div class=" text-white text-xs px-2 py-1 rounded cursor-pointer" classList={{ [props.color]: true }}>
+  <div class="text-white text-xs px-2 py-1 rounded cursor-pointer" classList={{ [props.color]: true }}>
     {props.text}
   </div>
 );
