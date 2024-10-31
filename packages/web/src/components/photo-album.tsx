@@ -1,11 +1,25 @@
-import { createComputed, createSignal, For, Show, untrack } from "solid-js";
-import { Image, usePhotoAlbum } from "../model/photo-album";
+import { first } from "remeda";
+import { For, Show, createComputed, createSelector, createSignal, onMount } from "solid-js";
+
 import { useImageDirectoryHandler } from "../model/image-directory-handler";
+import { Image, usePhotoAlbum } from "../model/photo-album";
 
 export const PhotoAlbum = () => {
   const { directoryHandler, requestDirectoryAccess } = useImageDirectoryHandler();
-  const { images, setRootDirectoryHandle, addTagToImage, removeTagFromImage } = usePhotoAlbum();
-  const [selectedImage, setSelectedImage] = createSignal<Image | null>(null);
+  const { images, setRootDirectoryHandle, addTagToImage, removeTagFromImage, tags } = usePhotoAlbum();
+  const [selectedImages, setSelectedImages] = createSignal<Image[] | null>([]);
+
+  const [filters, setFilters] = createSignal<string[]>([]);
+
+  const toggleTagFilter = (tag: string) => {
+    setFilters(tags => (tags.includes(tag) ? tags.filter(x => x !== tag) : [...tags, tag]));
+  };
+
+  const filteredImages = () => {
+    if (filters().length === 0) return images();
+
+    return images().filter(x => filters().every(tag => x.metadata.tags.includes(tag)));
+  };
 
   createComputed(() => {
     if (directoryHandler() !== null) {
@@ -13,17 +27,28 @@ export const PhotoAlbum = () => {
     }
   });
 
-  createComputed((prevImages: Image[]) => {
-    const imgs = images();
-    const currentSelectedImage = untrack(() => selectedImage());
-
-    if (currentSelectedImage) {
-      const prevIndex = prevImages.indexOf(currentSelectedImage);
-      setSelectedImage(imgs[prevIndex]);
+  const onImageSelect = (image: Image, event: MouseEvent) => {
+    if (event.shiftKey) {
+      setSelectedImages(images => (images.includes(image) ? images.filter(x => x !== image) : [...images, image]));
+    } else {
+      setSelectedImages([image]);
     }
+  };
 
-    return imgs;
+  onMount(() => {
+    document.addEventListener("keydown", (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setSelectedImages([]);
+      }
+    });
   });
+
+  const displayImage = () => first(selectedImages());
+
+  const isImageSelected = createSelector<Image[], Image>(
+    () => selectedImages(),
+    (x, y) => y.includes(x),
+  );
 
   return (
     <div class="w-[800px] m-auto">
@@ -31,45 +56,30 @@ export const PhotoAlbum = () => {
         Select Root Folder
       </div>
 
-      <Show when={selectedImage()} keyed>
-        {selectedImage => (
-          <div class="mb-4">
-            <img src={selectedImage.url} alt="Selected" class="max-w-full max-h-96" />
-            <Show when={selectedImage.metadata.tags.length}>
-              <div class="flex flex-wrap gap-1 mt-2">
-                {selectedImage.metadata.tags.map(tag => (
-                  <span onClick={() => removeTagFromImage(selectedImage, tag)}>
-                    <Tag text={tag} color="bg-blue-500" />
-                  </span>
-                ))}
-              </div>
-            </Show>
-            <div class="flex flex-wrap gap-1 mt-2">
-              <span onClick={() => addTagToImage(selectedImage, "A")}>
-                <Tag text="A" color="bg-red-500" />
-              </span>
-              <span onClick={() => addTagToImage(selectedImage, "B")}>
-                <Tag text="B" color="bg-red-500" />
-              </span>
-            </div>
-          </div>
-        )}
-      </Show>
+      <div>
+        <For each={tags()}>
+          {tag => (
+            <span onClick={[toggleTagFilter, tag]}>
+              <Tag text={tag} color="bg-blue-500" />
+            </span>
+          )}
+        </For>
+      </div>
+
+      <DisplayImage image={displayImage()} tags={tags()} addTagToImage={addTagToImage} removeTagFromImage={removeTagFromImage} />
 
       <div class="grid grid-cols-2 md:grid-cols-7 gap-4">
-        <For each={images()}>
+        <For each={filteredImages()}>
           {image => (
             <div
-              onClick={[setSelectedImage, image]}
+              onClick={[onImageSelect, image]}
               class="relative cursor-pointer"
-              classList={{ "border-4 border-blue-500": selectedImage() === image }}
+              classList={{ "border-4 border-blue-500": isImageSelected(image) }}
             >
               <img src={image.url} alt={image.name} class="w-full h-24 object-cover" />
               <Show when={image.metadata.tags.length > 0}>
                 <div class="absolute bottom-2 left-2 flex flex-wrap gap-1">
-                  {image.metadata.tags.map(tag => (
-                    <Tag text={tag} color="bg-blue-500" />
-                  ))}
+                  <For each={image.metadata.tags}>{tag => <Tag text={tag} color="bg-blue-500" />}</For>
                 </div>
               </Show>
             </div>
@@ -80,8 +90,55 @@ export const PhotoAlbum = () => {
   );
 };
 
+interface DisplayImageProps {
+  image: Image;
+  tags: string[];
+  removeTagFromImage: (image: Image, tag: string) => void;
+  addTagToImage: (image: Image, tag: string) => void;
+}
+
+const DisplayImage = (props: DisplayImageProps) => {
+  const toggleTagOnImage = (image: Image, tag: string) => {
+    if (image.metadata.tags.includes(tag)) {
+      props.removeTagFromImage(image, tag);
+    } else {
+      props.addTagToImage(image, tag);
+    }
+  };
+
+  const addNewTag = () => {
+    const tag = prompt("Tag Name");
+    if (tag) {
+      props.addTagToImage(props.image, tag);
+    }
+  };
+
+  return (
+    <Show when={props.image} keyed>
+      {displayImage => (
+        <div class="mb-4">
+          <img src={displayImage.url} alt="Selected" class="max-w-full max-h-96" />
+          <div class="flex flex-wrap gap-1 mt-2">
+            <For each={props.tags}>
+              {tag => (
+                <span onClick={() => toggleTagOnImage(displayImage, tag)}>
+                  <Tag text={tag} color={props.image.metadata.tags.includes(tag) ? "bg-red-500" : "bg-blue-500"} />
+                </span>
+              )}
+            </For>
+
+            <span onClick={addNewTag}>
+              <Tag text={"+ Add Tag"} color={"bg-blue-500"} />
+            </span>
+          </div>
+        </div>
+      )}
+    </Show>
+  );
+};
+
 const Tag = (props: { text: string; color: string }) => (
-  <div class="text-white text-xs px-2 py-1 rounded cursor-pointer" classList={{ [props.color]: true }}>
+  <span class="text-white text-xs px-2 py-1 rounded cursor-pointer" classList={{ [props.color]: true }}>
     {props.text}
-  </div>
+  </span>
 );

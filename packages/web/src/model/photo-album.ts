@@ -1,3 +1,4 @@
+import { flat, unique } from "remeda";
 import { createComputed, createMemo, createSignal, untrack } from "solid-js";
 
 export interface Image {
@@ -28,6 +29,8 @@ export const usePhotoAlbum = () => {
     });
   });
 
+  const tags = createMemo(() => unique(images().flatMap(x => x.metadata.tags)));
+
   const loadMetadata = async (handle: FileSystemDirectoryHandle): Promise<MetadataFile> => {
     try {
       const fileHandler = await handle.getFileHandle("metadata.json");
@@ -39,10 +42,7 @@ export const usePhotoAlbum = () => {
     }
   };
 
-  async function* loadImagesFromDirectory(
-    handle: FileSystemDirectoryHandle,
-    path: string[],
-  ): AsyncGenerator<Image, void, void> {
+  async function* loadImagesFromDirectory(handle: FileSystemDirectoryHandle, path: string[]): AsyncGenerator<Image, void, void> {
     for await (const entry of handle.values()) {
       if (entry.kind === "file" && entry.name !== "metadata.json") {
         const file = await entry.getFile();
@@ -107,7 +107,7 @@ export const usePhotoAlbum = () => {
     setFiles(imageFiles);
   });
 
-  return { images, setRootDirectoryHandle, addTagToImage, removeTagFromImage };
+  return { images, setRootDirectoryHandle, addTagToImage, removeTagFromImage, tags };
 };
 
 async function collectAsyncGeneratorValues<T>(gen: AsyncGenerator<T>): Promise<T[]> {
