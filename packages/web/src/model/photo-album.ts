@@ -6,6 +6,7 @@ export interface Image {
   url: string;
   path: string;
   folder: string;
+  lastModifiedDate: Date;
   metadata: ImageMetadata;
 }
 
@@ -53,6 +54,7 @@ export const usePhotoAlbum = () => {
             name: file.name,
             url: URL.createObjectURL(file),
             folder: path.join("/"),
+            lastModifiedDate: new Date(file.lastModified),
             path: (path.length > 0 ? path.join("/") + "/" : "") + file.name,
             metadata: { tags: [] },
           };

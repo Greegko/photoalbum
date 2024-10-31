@@ -45,6 +45,14 @@ export const PhotoAlbum = () => {
 
   const displayImage = () => first(selectedImages());
 
+  const addTagToImageHandler = (tag: string) => {
+    selectedImages().map(x => addTagToImage(x, tag));
+  };
+
+  const removeTagFromImageHandler = (tag: string) => {
+    selectedImages().map(x => removeTagFromImage(x, tag));
+  };
+
   const isImageSelected = createSelector<Image[], Image>(
     () => selectedImages(),
     (x, y) => y.includes(x),
@@ -66,7 +74,12 @@ export const PhotoAlbum = () => {
         </For>
       </div>
 
-      <DisplayImage image={displayImage()} tags={tags()} addTagToImage={addTagToImage} removeTagFromImage={removeTagFromImage} />
+      <DisplayImage
+        image={displayImage()}
+        tags={tags()}
+        addTagToImage={addTagToImageHandler}
+        removeTagFromImage={removeTagFromImageHandler}
+      />
 
       <div class="grid grid-cols-2 md:grid-cols-7 gap-4">
         <For each={filteredImages()}>
@@ -93,23 +106,24 @@ export const PhotoAlbum = () => {
 interface DisplayImageProps {
   image: Image;
   tags: string[];
-  removeTagFromImage: (image: Image, tag: string) => void;
-  addTagToImage: (image: Image, tag: string) => void;
+  removeTagFromImage: (tag: string) => void;
+  addTagToImage: (tag: string) => void;
 }
 
 const DisplayImage = (props: DisplayImageProps) => {
   const toggleTagOnImage = (image: Image, tag: string) => {
     if (image.metadata.tags.includes(tag)) {
-      props.removeTagFromImage(image, tag);
+      props.removeTagFromImage(tag);
     } else {
-      props.addTagToImage(image, tag);
+      props.addTagToImage(tag);
     }
   };
 
   const addNewTag = () => {
     const tag = prompt("Tag Name");
+
     if (tag) {
-      props.addTagToImage(props.image, tag);
+      props.addTagToImage(tag);
     }
   };
 
