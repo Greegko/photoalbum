@@ -79,12 +79,11 @@ export const PhotoAlbum = () => {
       <div onClick={requestDirectoryAccess} class="mb-4">
         Select Root Folder
       </div>
-
       <div class="flex flex-wrap gap-1 mt-2 mb-2">
+        Tags:
         <span onClick={[toggleTagFilter, NoTags]}>
           <Tag text="Without Tags" color={isTagFilterSelected(NoTags) ? "bg-red-500" : "bg-blue-500"} />
         </span>
-
         <For each={tags()}>
           {tag => (
             <span onClick={[toggleTagFilter, tag]}>
@@ -93,14 +92,12 @@ export const PhotoAlbum = () => {
           )}
         </For>
       </div>
-
       <DisplayImage
         image={displayImage()}
         tags={tags()}
         addTagToImage={addTagToImageHandler}
         removeTagFromImage={removeTagFromImageHandler}
       />
-
       <div class="grid grid-cols-2 md:grid-cols-7 gap-4">
         <For each={filteredImages()}>
           {image => (
@@ -110,11 +107,14 @@ export const PhotoAlbum = () => {
               classList={{ "border-4 border-blue-500": isImageSelected(image) }}
             >
               <img src={image.url} alt={image.name} class="w-full h-24 object-cover" />
-              <Show when={image.metadata.tags.length > 0}>
-                <div class="absolute bottom-2 left-2 flex flex-wrap gap-1">
+              <div class="absolute bottom-2 left-2 flex flex-wrap gap-1">
+                <Show when={image.metadata.tags.length > 0}>
                   <For each={image.metadata.tags}>{tag => <Tag text={tag} color="bg-blue-500" />}</For>
-                </div>
-              </Show>
+                </Show>
+                <Show when={image.folder}>
+                  <Tag text={image.folder} color="bg-green-500" />
+                </Show>
+              </div>
             </div>
           )}
         </For>
@@ -152,6 +152,7 @@ const DisplayImage = (props: DisplayImageProps) => {
       {displayImage => (
         <div class="mb-4">
           <img src={displayImage.url} alt="Selected" class="max-w-full max-h-96" />
+
           <div class="flex flex-wrap gap-1 mt-2">
             <For each={props.tags}>
               {tag => (
@@ -160,6 +161,10 @@ const DisplayImage = (props: DisplayImageProps) => {
                 </span>
               )}
             </For>
+
+            <Show when={displayImage.folder}>
+              <Tag text={displayImage.folder} color="bg-green-500" />
+            </Show>
 
             <span onClick={addNewTag}>
               <Tag text={"+ Add Tag"} color={"bg-blue-500"} />
