@@ -1,24 +1,40 @@
-import { first } from "remeda";
+import { filter, first } from "remeda";
 import { For, Show, createComputed, createSelector, createSignal, onMount } from "solid-js";
 
 import { useImageDirectoryHandler } from "../model/image-directory-handler";
 import { Image, usePhotoAlbum } from "../model/photo-album";
+
+const NoTags = Symbol("No-Tags");
+type NoTags = typeof NoTags;
 
 export const PhotoAlbum = () => {
   const { directoryHandler, requestDirectoryAccess } = useImageDirectoryHandler();
   const { images, setRootDirectoryHandle, addTagToImage, removeTagFromImage, tags } = usePhotoAlbum();
   const [selectedImages, setSelectedImages] = createSignal<Image[] | null>([]);
 
-  const [filters, setFilters] = createSignal<string[]>([]);
+  const [filters, setFilters] = createSignal<string[] | NoTags>([]);
 
-  const toggleTagFilter = (tag: string) => {
-    setFilters(tags => (tags.includes(tag) ? tags.filter(x => x !== tag) : [...tags, tag]));
+  const toggleTagFilter = (tag: string | NoTags) => {
+    if (tag === NoTags) return setFilters(tags => (tags === NoTags ? [] : NoTags));
+
+    setFilters(tags => (tags !== NoTags && tags.includes(tag) ? tags.filter(x => x !== tag) : tags === NoTags ? [tag] : [...tags, tag]));
   };
 
   const filteredImages = () => {
-    if (filters().length === 0) return images();
+    const tags = filters();
+    if (tags === NoTags) return images().filter(image => image.metadata.tags.length === 0);
+    if (tags.length === 0) return images();
 
-    return images().filter(x => filters().every(tag => x.metadata.tags.includes(tag)));
+    return images().filter(x => tags.every(tag => x.metadata.tags.includes(tag)));
+  };
+
+  const isTagFilterSelected = (tag: string | NoTags) => {
+    const tags = filters();
+
+    if (tags === NoTags) return tag === NoTags;
+    if (tag === NoTags) return false;
+
+    return tags.includes(tag);
   };
 
   createComputed(() => {
@@ -64,11 +80,15 @@ export const PhotoAlbum = () => {
         Select Root Folder
       </div>
 
-      <div>
+      <div class="flex flex-wrap gap-1 mt-2 mb-2">
+        <span onClick={[toggleTagFilter, NoTags]}>
+          <Tag text="Without Tags" color={isTagFilterSelected(NoTags) ? "bg-red-500" : "bg-blue-500"} />
+        </span>
+
         <For each={tags()}>
           {tag => (
             <span onClick={[toggleTagFilter, tag]}>
-              <Tag text={tag} color="bg-blue-500" />
+              <Tag text={tag} color={isTagFilterSelected(tag) ? "bg-red-500" : "bg-blue-500"} />
             </span>
           )}
         </For>
