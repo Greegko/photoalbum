@@ -1,5 +1,5 @@
-import { flat, unique } from "remeda";
-import { createComputed, createMemo, createSignal, untrack } from "solid-js";
+import { last, unique } from "remeda";
+import { batch, createComputed, createMemo, createSignal, untrack } from "solid-js";
 
 export interface Image {
   name: string;
@@ -26,7 +26,7 @@ export const usePhotoAlbum = () => {
     const allMetadata = metadata();
 
     return allFiles.map(image => {
-      return { ...image, metadata: allMetadata[image.path] || { tags: [] } };
+      return { ...image, metadata: { ...image.metadata, ...allMetadata[image.path] } };
     });
   });
 
@@ -77,35 +77,56 @@ export const usePhotoAlbum = () => {
     await writable.close();
   });
 
-  const addTagToImage = async (image: Image, tag: string) => {
-    setMetadata(metadataFile => {
-      const imageRef = metadataFile[image.path] || { tags: [] };
+  createComputed(() => {
+    const meta = metadata();
+    const file = files();
 
-      return {
-        ...metadataFile,
-        [image.path]: { ...imageRef, tags: [...imageRef.tags, tag] },
-      };
+    if (file.length === 0) return;
+
+    batch(() => {
+      for (let fileMetadataPath in meta) {
+        const fileRef = file.find(x => x.path === fileMetadataPath);
+
+        if (!fileRef) {
+          const metaFileName = last(fileMetadataPath.split("/"));
+          const filesWithSameName = file.filter(x => x.name === metaFileName);
+
+          if (filesWithSameName.length === 1) {
+            const newFile = last(filesWithSameName);
+            const newMetadata = { ...meta };
+            newMetadata[newFile.path] = newMetadata[fileMetadataPath];
+            delete newMetadata[fileMetadataPath];
+            setMetadata(newMetadata);
+          } else {
+            console.warn("Missing file metadata correction - multiple file has been found", filesWithSameName);
+          }
+        }
+      }
     });
+  });
+
+  const addTagToImage = async (image: Image, tag: string) => {
+    setMetadata(metadataFile => ({
+      ...metadataFile,
+      [image.path]: { ...image.metadata, tags: [...image.metadata.tags, tag] },
+    }));
   };
 
   const removeTagFromImage = async (image: Image, tag: string) => {
-    setMetadata(metadataFile => {
-      const imageRef = metadataFile[image.path] || { tags: [] };
-
-      return {
-        ...metadataFile,
-        [image.path]: { ...imageRef, tags: imageRef.tags.filter(tagName => tagName !== tag) },
-      };
-    });
+    setMetadata(metadataFile => ({
+      ...metadataFile,
+      [image.path]: { ...image.metadata, tags: image.metadata.tags.filter(tagName => tagName !== tag) },
+    }));
   };
 
   createComputed(async () => {
-    if (!rootDirectoryHandle()) return;
+    const root = rootDirectoryHandle();
+    if (!root) return;
 
-    const metadata = await loadMetadata(rootDirectoryHandle()!);
+    const metadata = await loadMetadata(root);
     setMetadata(metadata);
 
-    const imageFiles = await collectAsyncGeneratorValues(loadImagesFromDirectory(rootDirectoryHandle()!, []));
+    const imageFiles = await collectAsyncGeneratorValues(loadImagesFromDirectory(root, []));
     setFiles(imageFiles);
   });
 

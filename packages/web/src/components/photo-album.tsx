@@ -163,7 +163,9 @@ const DisplayImage = (props: DisplayImageProps) => {
             </For>
 
             <Show when={displayImage.folder}>
-              <Tag text={displayImage.folder} color="bg-green-500" />
+              <span>
+                <Tag text={displayImage.folder} color="bg-green-500" />
+              </span>
             </Show>
 
             <span onClick={addNewTag}>
