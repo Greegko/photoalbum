@@ -1,0 +1,24 @@
+on: push
+name: Deploy website on push
+jobs:
+  web-deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - run: pnpm i
+      - run: pnpm build
+
+      - name: push to ftp
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server: greegko.com
+          username: u584298536
+          password: ${{ secrets.HOSTINGER_FTP_PASSWORD }}
+          server-dir: ./subdomains/photo-album/
+          local-dir: ./packages/web/dist/
